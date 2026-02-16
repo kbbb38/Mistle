@@ -10,6 +10,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+/*
+    Manages the memory mapping of the fragment ion index
+*/
 class MappedFragmentIndex
 {
     int fd_ = -1;

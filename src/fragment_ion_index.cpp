@@ -208,6 +208,9 @@ bool fragment_ion_index::load_index_from_binary_file(const string &path) {
     return true;
 }
 
+/*
+    Prepares memory mapping of fragment ion index as well as the fragment bin count vector
+*/
 bool fragment_ion_index::map_file(const std::string &path)
 {
     mapping.emplace(path);
@@ -217,6 +220,9 @@ bool fragment_ion_index::map_file(const std::string &path)
     return true;
 }
 
+/*
+    Loads only the bin that is actively needed via memory mapping using the fragment bin counter. If a bin is already loaded in this is skipped.
+*/
 bool fragment_ion_index::load_bin_from_binary_file_mmap(unsigned int bin_index) 
 {
     /* 
@@ -226,14 +232,16 @@ bool fragment_ion_index::load_bin_from_binary_file_mmap(unsigned int bin_index)
         return true;
     };
 
+    // fragment bin counter
     const std::vector<uint32_t>& bin_count = mapping -> bin_count();
 
+    // starting position is 0 in the first bin, otherwise look into bin counter for number of fragments up to current bin
     const unsigned int start = (bin_index == 0) ? 0 : mapping->bin_count()[bin_index - 1];
-    
     const char* data = mapping->data();
 
     for (size_t i = start; i < bin_count[bin_index]; ++i)
     {
+        // exact bit starting position
         const char* base = data + i * 12;
         unsigned int id = *reinterpret_cast<const uint32_t*>(base);
         float mz = *reinterpret_cast<const float*>(base+4);
@@ -277,12 +285,16 @@ bool fragment_ion_index::save_index_to_binary_file(const string &path) {
     return true;
 }
 
+/*
+    Saves index and builds and saves fragment bin counter to binary files
+*/
 bool fragment_ion_index::save_index_to_binary_file(const string &path, float bin_size) {
 
     ofstream f(path, ios::binary | ios::out);
     std::string count_string = path.substr(0, path.size()-4) + "_count.bin";
     ofstream fc(count_string, std::ios::binary);
 
+    // fragment bin counter
     std::vector<uint32_t> bin_count(int((BIN_MAX_MZ - BIN_MIN_MZ) / bin_size) + 1);
     for (auto &bin : fragment_bins) {
         for (auto & j : bin) {
@@ -295,6 +307,7 @@ bool fragment_ion_index::save_index_to_binary_file(const string &path, float bin
             bin_count[int((j.mz - BIN_MIN_MZ) / bin_size)] += 1;
         }
     }
+    // Sum so that each bin holds the number of fragments up to that bin
     partial_sum(bin_count.begin(), bin_count.end(), bin_count.begin());
     fc.write(reinterpret_cast<const char*>(bin_count.data()), bin_count.size() * sizeof(uint32_t));
 

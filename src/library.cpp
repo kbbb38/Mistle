@@ -37,9 +37,10 @@ bool library::construct(string &path) {
         cout << "Loading library from directory:" << endl;
         load_library_from_directory(path);
     }
-    cout << "Loading library from single file:" << endl;
-    load_spectra_from_file(path);
-
+    else {
+        cout << "Loading library from single file:" << endl;
+        load_spectra_from_file(path);
+    }
     return true;
 }
 
