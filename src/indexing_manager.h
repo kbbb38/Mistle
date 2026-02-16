@@ -23,6 +23,9 @@ class indexing_manager {
     //Precursor Index
     std::unique_ptr<precursor_index> precursorIndex;
 
+    //Fragment bin counter
+    std::vector<uint32_t> fragment_bin_counter;
+
     /*
      * (Sub-) Indices
      */

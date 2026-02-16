@@ -21,11 +21,13 @@ public:
     int label = 1;
 
 
-    unsigned int sub_idx_range;
+    float sub_idx_range;
     std::vector<unsigned int> sub_idx_limits;
     std::vector<std::string> sub_idx_file_names;
     unsigned int minimum_peptide_length;
     std::string build_command;
+    bool mmap;
+    float bin_size;
 
     //TODO parse more info and move to file_writer/reader
     bool save_configuration_to_file(const std::string& config_file_path);

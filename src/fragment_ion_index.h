@@ -1,8 +1,10 @@
 #ifndef SIMPLE_EXAMPLE_FRAGMENT_ION_INDEX_H
 #define SIMPLE_EXAMPLE_FRAGMENT_ION_INDEX_H
 #include <vector>
+#include <optional>
 #include <immintrin.h>
 #include "precursor_index.h"
+#include "mmap.h"
 
 
 struct fragment {
@@ -42,23 +44,27 @@ public:
     std::shared_ptr<precursor_index> precursor_idx;
     std::string file_path;
     std::vector<fragment_bin> fragment_bins;
+    std::vector<uint32_t> fragment_bins_count;
     __attribute__ ((aligned (32))) std::vector<fragment_binn> frag_bins;
-
+    std::optional<MappedFragmentIndex> mapping;
+    std::optional<std::vector<bool>> loaded_fragments;
 
     fragment_ion_index();
     explicit fragment_ion_index(precursor_index *parent_index);
     explicit fragment_ion_index(std::string path);
 
     bool sort_index(std::unique_ptr<precursor_index>& parent_index);
-
+    bool sort_index(std::unique_ptr<precursor_index>& parent_index, float bin_size);
 
     bool prepare_axv_access();
     bool load_index_from_file(const std::string& path);
     bool load_index_from_binary_file(const std::string& path);
+    bool map_file(const std::string &path);
+    bool load_bin_from_binary_file_mmap(unsigned int bin_index);
     bool load_preliminary_index_from_binary_file(const std::string& path);
     bool save_index_to_file(const std::string& path);
     bool save_index_to_binary_file(const std::string& path);
-
+    bool save_index_to_binary_file(const std::string& path, float bin_size);
 };
 
 

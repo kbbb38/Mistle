@@ -79,6 +79,13 @@ bool index_file_writer::stream_peaks_to_binary_file(std::fstream &f, unsigned in
     return true;
 }
 
+bool index_file_writer::stream_peak_to_binary_file(std::fstream &f, unsigned int parent_id, const float mz, const float intensity)
+{
+        f.write((char *) &parent_id, sizeof(unsigned int));
+        f.write((char *) &mz, sizeof(float));
+        f.write((char *) &intensity, sizeof(float));
+}
+
 bool index_file_writer::save_precursor_index_to_binary_file(const std::string &file_path,
                                                             std::vector<precursor> &precursors) {
 

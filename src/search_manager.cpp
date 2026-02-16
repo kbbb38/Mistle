@@ -13,6 +13,7 @@
 #include "search_manager.h"
 #include "settings.h"
 #include <set>
+
 search_manager::search_manager(std::string search_file_path, std::string index_directory_path) : search_file_path(search_file_path), index_directory_path(index_directory_path) {
     std::cout << "Configuring ... " << std::endl;
     config = std::make_shared<configuration>();
@@ -151,8 +152,13 @@ bool search_manager::perform_searches() {
         if (mapped_search_ids[i].empty()) {
             continue;
         }
-        frag_idx->load_index_from_binary_file(config->sub_idx_file_names[i]);
-        frag_idx->prepare_axv_access();
+        // Only load whole fragment index when mmap is not activated
+        if(!config->mmap)
+        { 
+            frag_idx->load_index_from_binary_file(config->sub_idx_file_names[i]);
+            frag_idx->prepare_axv_access();
+        }
+        else frag_idx->map_file(config->sub_idx_file_names[i]);
         //TODO set precursor index limits by subindex borders... has to be properly implemented
         //std::cout << "Searching ... " << std::endl;
 
@@ -189,8 +195,12 @@ bool search_manager::perform_searches_parallel() {
         if (mapped_search_ids[i].empty()) {
             continue;
         }
-        frag_idx->load_index_from_binary_file(config->sub_idx_file_names[i]);
-        frag_idx->prepare_axv_access();
+        if(!config->mmap)
+        { 
+            frag_idx->load_index_from_binary_file(config->sub_idx_file_names[i]);
+            frag_idx->prepare_axv_access();
+        }
+        else frag_idx->map_file(config->sub_idx_file_names[i]);
         //TODO set precursor index limits by subindex borders... has to be properly implemented
         //std::cout << "Searching ... " << std::endl;
 
@@ -605,7 +615,6 @@ bool search_manager::search_spectrum(unsigned int search_id) {
         return false;
     }
 
-
     // Init candidate scores
     std::vector<float> dot_scores(upper_rank - lower_rank + 1, 0.f);
 
@@ -613,8 +622,11 @@ bool search_manager::search_spectrum(unsigned int search_id) {
     for (int j = 0; j < spec->binned_peaks.size(); ++j) {
 
         // Open ion mz bin for corresponding peak
+        if(config->mmap)
+        {
+            frag_idx->load_bin_from_binary_file_mmap(spec->binned_peaks[j]);
+        }
         fragment_bin &ion_bin = frag_idx->fragment_bins[spec->binned_peaks[j]];
-
         // Determine starting point of lowest (candidate) parent index inside bin
         int starting_point_inside_bin = std::lower_bound(ion_bin.begin(), ion_bin.end(), lower_rank, [&](fragment &f, int rank) {
             return precursor_idx->get_rank(f.parent_id) < rank;

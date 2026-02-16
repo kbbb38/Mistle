@@ -4,9 +4,18 @@
 #include <vector>
 #include <cassert>
 #include <cmath>
+#include <chrono>
+#include <numeric>
 #include "fragment_ion_index.h"
 #include "DefineConstants.h"
 #include "settings.h"
+
+#include <sys/mman.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 using namespace std;
 
@@ -60,6 +69,25 @@ bool fragment_ion_index::sort_index(std::unique_ptr<precursor_index>& parent_ind
         });
     }
 
+    return true;
+}
+
+bool fragment_ion_index::sort_index(std::unique_ptr<precursor_index>& parent_index, float bin_size) {
+
+    /*
+     * Sort all bins according to bin and parent ranking
+     */
+
+    for (fragment_bin &bin : fragment_bins) 
+    {
+	    std::sort(bin.begin(), bin.end(), [&](fragment a, fragment b)
+	    {
+		    int bin_a = int((a.mz - BIN_MIN_MZ) / bin_size);
+		    int bin_b = int((b.mz - BIN_MIN_MZ) / bin_size);
+            if (parent_index->get_rank(a.parent_id) == parent_index->get_rank(b.parent_id)) std::cout << parent_index->get_rank(a.parent_id) << " ";
+		    return bin_a == bin_b ? parent_index->get_rank(a.parent_id) < parent_index->get_rank(b.parent_id) : bin_a < bin_b;
+	    });
+    }
     return true;
 }
 
@@ -117,7 +145,6 @@ bool fragment_ion_index::save_index_to_file(const string &path) {
 }
 
 bool fragment_ion_index::load_index_from_binary_file(const string &path) {
-
     /*
      * Read index from binary file
      */
@@ -178,8 +205,59 @@ bool fragment_ion_index::load_index_from_binary_file(const string &path) {
 
     }
 
-
     f.close();
+    return true;
+}
+
+bool fragment_ion_index::map_file(const std::string &path)
+{
+    mapping.emplace(path);
+    fragment_bins.clear();
+    fragment_bins.resize(int((BIN_MAX_MZ - BIN_MIN_MZ) / settings::bin_size) + 1);
+    loaded_fragments.emplace(static_cast<size_t>((BIN_MAX_MZ - BIN_MIN_MZ) / settings::bin_size) + 1);
+    return true;
+}
+
+bool fragment_ion_index::load_bin_from_binary_file_mmap(unsigned int bin_index) 
+{
+    /* 
+     * Read single bin from binary file into the fragment index using mmap (exploratory)
+     */
+    if (loaded_fragments->at(bin_index) == true){
+        return true;
+    };
+
+    const std::vector<uint32_t>& bin_count = mapping -> bin_count();
+
+    const unsigned int start = (bin_index == 0) ? 0 : mapping->bin_count()[bin_index - 1];
+    
+    const char* data = mapping->data();
+
+    for (size_t i = start; i < bin_count[bin_index]; ++i)
+    {
+        const char* base = data + i * 12;
+        unsigned int id = *reinterpret_cast<const uint32_t*>(base);
+        float mz = *reinterpret_cast<const float*>(base+4);
+        float intensity = *reinterpret_cast<const float*>(base+8);
+
+        if (settings::turn_off_fragment_intensities) intensity = 1.f;
+
+        if (mz > BIN_MAX_MZ || mz < BIN_MIN_MZ) continue;
+
+        if (!fragment_bins[bin_index].empty() && fragment_bins[bin_index].back().parent_id == id)
+        {
+            std::cout << mz << " ";
+            fragment &frag = fragment_bins[bin_index].back();
+
+            if (frag.peak_composition.empty()) frag.peak_composition.emplace_back(frag.mz, frag.intensity);
+            frag.peak_composition.emplace_back(mz, intensity);
+
+            frag.intensity = sqrt(frag.intensity * frag.intensity + intensity * intensity);
+        }
+        
+        else fragment_bins[bin_index].emplace_back(fragment(id, intensity, mz));
+    }
+    loaded_fragments->at(bin_index) = true;
     return true;
 }
 
@@ -198,6 +276,32 @@ bool fragment_ion_index::save_index_to_binary_file(const string &path) {
     }
 
     f.close();
+    return true;
+}
+
+bool fragment_ion_index::save_index_to_binary_file(const string &path, float bin_size) {
+
+    ofstream f(path, ios::binary | ios::out);
+    std::string count_string = path.substr(0, path.size()-4) + "_count.bin";
+    ofstream fc(count_string, std::ios::binary);
+
+    std::vector<uint32_t> bin_count(int((BIN_MAX_MZ - BIN_MIN_MZ) / bin_size) + 1);
+
+    for (auto &bin : fragment_bins) {
+        for (auto & j : bin) {
+            f.write((char *) &j.parent_id, sizeof(unsigned int)); 
+            f.write((char *) &j.mz, sizeof(float));
+            f.write((char *) &j.intensity, sizeof(float));
+
+            bin_count[int((j.mz - BIN_MIN_MZ) / bin_size)] += 1;
+        }
+    }
+
+    partial_sum(bin_count.begin(), bin_count.end(), bin_count.begin());
+    fc.write(reinterpret_cast<const char*>(bin_count.data()), bin_count.size() * sizeof(uint32_t));
+
+    f.close();
+    fc.close();
     return true;
 }
 
@@ -271,20 +375,18 @@ bool fragment_ion_index::load_preliminary_index_from_binary_file(const string &p
     fragment_bins.clear();
     fragment_bins.resize(1);
 
-    while (!f.eof()) { //TODO might not actually end the loop correctly
-        unsigned int id;
-        float mz;
-        float intensity;
+    unsigned int id;
+    float mz;
+    float intensity;
 
-        f.read((char *) &id, sizeof(unsigned int));
-        f.read((char *) &mz, sizeof(float));
-        f.read((char *) &intensity, sizeof(float));
+    while (f.read(reinterpret_cast<char*>(&id), sizeof(id)) &&
+           f.read(reinterpret_cast<char*>(&mz), sizeof(mz)) &&
+           f.read(reinterpret_cast<char*>(&intensity), sizeof(intensity)))
+    {
 
         fragment_bins[0].emplace_back(fragment(id, intensity, mz));
 
     }
-
-
     f.close();
     return true;
 }

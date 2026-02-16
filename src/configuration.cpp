@@ -27,6 +27,7 @@ bool configuration::save_configuration_to_file(const std::string& config_file_pa
     }
     f << "\n";
     f << "Label: " << label << "\n";
+    f << "Mmap: " << mmap << "\n";
     f << "Min peptide length: " << minimum_peptide_length << "\n";
     f << "Build command: " << build_command << "\n";
     f.close();
@@ -73,6 +74,11 @@ bool configuration::load_configuration_from_file(const std::string& config_file_
     } else {
         label = 1;
     }
+
+    //Fourth line
+    getline(f, line);
+    if(line.rfind("Mmap: ", 0) == 0) mmap = std::stoi(line.substr(6, std::string::npos));
+    else mmap = 0;
 
     f.close();
 

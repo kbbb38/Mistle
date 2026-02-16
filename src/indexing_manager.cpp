@@ -3,6 +3,8 @@
 #include <utility>
 #include <filesystem>
 #include <fstream>
+#include <numeric>
+#include <cmath>
 #include "msp_reader.h"
 #include "mgf_reader.h"
 #include "index_file_writer.h"
@@ -32,7 +34,6 @@ indexing_manager::indexing_manager(string path) {
         config->sub_idx_limits.push_back(STANDARD_PARENT_LOWER_MZ + config->sub_idx_range * i);
     }
 
-
     for (const auto & entry : std::filesystem::directory_iterator(path)) {
         if (entry.path().extension() == ".msp") {
             lib_files.push_back(entry);
@@ -55,8 +56,7 @@ indexing_manager::indexing_manager(std::vector<std::string> &input_paths, std::s
         //cout << "LIMIT: " << STANDARD_PARENT_LOWER_MZ + config->sub_idx_range * i << endl;
         config->sub_idx_limits.push_back(STANDARD_PARENT_LOWER_MZ + config->sub_idx_range * i);
     }
-
-
+    
     for (std::string &path : input_paths) {
 
         if (!std::filesystem::exists(path)) {
@@ -145,6 +145,7 @@ bool indexing_manager::build_indices() {
 
     //Closing output streams and reopening them as input streams
     for (int i = 0; i < output_streams.size(); ++i) {
+        output_streams[i].flush();
         output_streams[i].close();
     }
 
@@ -154,8 +155,16 @@ bool indexing_manager::build_indices() {
 
         fragment_ion_index frag_index;
         frag_index.load_preliminary_index_from_binary_file(file_name);
-        frag_index.sort_index(precursorIndex);
-        frag_index.save_index_to_binary_file(file_name);
+        if (config->mmap)
+        {
+            frag_index.sort_index(precursorIndex, config->bin_size);
+            frag_index.save_index_to_binary_file(file_name, config->bin_size);
+        }
+        else
+        {
+            frag_index.sort_index(precursorIndex);
+            frag_index.save_index_to_binary_file(file_name);
+        }
     }
     cout << "Done" << endl;
 
@@ -212,7 +221,6 @@ bool indexing_manager::parse_file(unsigned int file_num) {
                 return;
             }
 
-
             //Lock for recording and streaming
             std::lock_guard<std::mutex> guard(pool->mtx);
 
@@ -220,13 +228,10 @@ bool indexing_manager::parse_file(unsigned int file_num) {
             precursor &bookmark = precursorIndex->record_new_precursor(tmp_spectrum);
 
             //Stream (binned) peaks into corresponding sub-index file
-
             unsigned int idx_num = config->assign_to_index(bookmark.mz);
             index_file_writer::stream_peaks_to_binary_file(output_streams[idx_num], bookmark.id, tmp_spectrum);
             //std::cout << bookmark.mz << std::endl;
-
         };
-
 
         if (pool->get_size() > 0) {
             pool->enqueue(read_and_stream);
@@ -250,8 +255,8 @@ bool indexing_manager::parse_file_buffered(unsigned int file_num) {
     buffer.resize(buffer_size);
 
     /*
-     * Main loop reading library and creating preliminary indices on the fly
-     */
+    Main loop reading library and creating preliminary indices on the fly
+    */
     while (!f.eof()) {
 
         //Read large char buffer
