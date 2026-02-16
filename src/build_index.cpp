@@ -26,7 +26,7 @@ cxxopts::ParseResult parseArgs(int argc, const char* argv[], std::vector<std::st
                 ("label", "Give the library a label (1: target; -1: decoy)", cxxopts::value<int>()->default_value("1"), "NUM")
                 ("t,threads", "number of threads (experimental)\n - 1 thread for reading, other threads for processing. Has increased RAM costs (try using more threads or GLIBC_TUNABLES=glibc.malloc.tcache_count=0 for compensation)", cxxopts::value<int>()->default_value("1"), "NUM")
                 ("b,bin_size", "bin size for fragment ion binning (in Da)", cxxopts::value<float>()->default_value("1"), "NUM")
-                ("m,mmap", "use memory mapping during search to decrease loading time of data, has to be activated during build already", cxxopts::value<bool>()->default_value("false"), "BOOL");
+                ("m,mmap", "use memory mapping during search to decrease loading time of data, has to be activated during build already", cxxopts::value<bool>()->implicit_value("true"), "BOOL");
 
         options.parse_positional({"input", "output"});
 
