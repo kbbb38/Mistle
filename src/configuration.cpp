@@ -28,6 +28,7 @@ bool configuration::save_configuration_to_file(const std::string& config_file_pa
     f << "\n";
     f << "Label: " << label << "\n";
     f << "Mmap: " << mmap << "\n";
+    if (mmap) f << "Bin size: " << bin_size << "\n";
     f << "Min peptide length: " << minimum_peptide_length << "\n";
     f << "Build command: " << build_command << "\n";
     f.close();
@@ -75,13 +76,21 @@ bool configuration::load_configuration_from_file(const std::string& config_file_
         label = 1;
     }
 
-    //Fourth line
+    //Fourth line (mmap)
     getline(f, line);
     if(line.rfind("Mmap: ", 0) == 0) mmap = std::stoi(line.substr(6, std::string::npos));
-    else mmap = 0;
+    else std::cerr << "Wrong config format" << std::endl;
+
+    //Fifth line (bin_size if mmap is true)
+    if (mmap == true)
+    {
+        getline(f, line);
+        if(line.rfind("Bin size: ", 0) == 0) bin_size = std::stoi(line.substr(10, std::string::npos));
+        else std::cerr << "Wrong config format" << std::endl;
+    }
 
     f.close();
-
+    
     idx_path = config_file_path.substr(0,config_file_path.rfind('/') + 1);
     precursor_index_path = idx_path + "precursor_idx.bin";
     for (int i = 0; i < num_indices; ++i) {

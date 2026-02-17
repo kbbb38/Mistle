@@ -23,7 +23,6 @@ search_manager::search_manager(std::string search_file_path, std::string index_d
     //Setting up scoring parameters
     sigma = settings::bin_size; // Alternative: / 2.f;
     max_normal = normal_pdf(0,0, sigma);
-
 }
 
 

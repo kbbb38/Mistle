@@ -28,7 +28,7 @@ cxxopts::ParseResult parseArgs(int argc, const char* argv[]) {
                 ("t,threads", "number of threads", cxxopts::value<int>()->default_value("1"), "NUM")
                 ("p,ppm_tolerance", "precursor mz tolerance given in ppm", cxxopts::value<float>()->default_value("10"), "NUM")
                 ("m,mz_tolerance", "precursor mz tolerance (absolut value in Da)", cxxopts::value<float>(), "NUM")
-                ("b,bin_size", "bin size for fragment ion binning (in Da)", cxxopts::value<float>()->default_value("1"), "NUM")
+                ("b,bin_size", "bin size for fragment ion binning (in Da), only needed if memory mapping was not used for building the index", cxxopts::value<float>()->default_value("1"), "NUM")
                 ("hits_per_spectrum", "number of output matches per input spectrum", cxxopts::value<int>()->default_value("1"), "NUM")
                 ("reduce_noise_in_window", "Apply noise reduction with the top X peaks in window w approach (default: off)", cxxopts::value<bool>()->default_value("false"))
                 ("peaks_per_window", "number of peaks per window", cxxopts::value<int>()->default_value("5"), "NUM")

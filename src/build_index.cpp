@@ -25,8 +25,8 @@ cxxopts::ParseResult parseArgs(int argc, const char* argv[], std::vector<std::st
                 ("min_pep_length", "Minimum peptide length for the reference spectrum to be loaded into the index", cxxopts::value<unsigned int>()->default_value("7"), "NUM")
                 ("label", "Give the library a label (1: target; -1: decoy)", cxxopts::value<int>()->default_value("1"), "NUM")
                 ("t,threads", "number of threads (experimental)\n - 1 thread for reading, other threads for processing. Has increased RAM costs (try using more threads or GLIBC_TUNABLES=glibc.malloc.tcache_count=0 for compensation)", cxxopts::value<int>()->default_value("1"), "NUM")
-                ("b,bin_size", "bin size for fragment ion binning (in Da)", cxxopts::value<float>()->default_value("1"), "NUM")
-                ("m,mmap", "use memory mapping during search to decrease loading time of data, has to be activated during build already", cxxopts::value<bool>()->implicit_value("true"), "BOOL");
+                ("b,bin_size", "bin size for fragment ion binning (in Da), only needed if memory mapping -m is activated", cxxopts::value<float>()->default_value("1"), "NUM")
+                ("m,mmap", "Use memory mapping during search to decrease loading time of data, has to be activated during build already, bin size -b also needs to be provided during build", cxxopts::value<bool>()->implicit_value("true"), "BOOL");
 
         options.parse_positional({"input", "output"});
 
@@ -67,8 +67,29 @@ cxxopts::ParseResult parseArgs(int argc, const char* argv[], std::vector<std::st
         }
         config->minimum_peptide_length = result["min_pep_length"].as<unsigned int>();
         config->label = result["label"].as<int>();
-        config->mmap = result["mmap"].as<bool>();
-        config->bin_size = result["bin_size"].as<float>();
+
+        bool use_mmap = result["mmap"].as<bool>();
+        bool bin_size_provided = result.count("bin_size") > 0;
+
+        if (use_mmap)
+        {
+            if (!bin_size_provided)
+            {
+                std::cerr << "Error: --bin_size (-b) is required when --mmap (-m) is enabled." << std::endl;
+                std::cerr << options.help() << std::endl;
+                exit(1);
+            }
+        }
+        else
+        {
+            if (bin_size_provided)
+            {
+                std::cerr << "Warning: --bin_size (-b) was specified, but --mmap (-m) is not enabled." << std::endl;
+                std::cerr << "Warning: When memory mapping is not used the bin size can be adjusted during search." << std::endl;
+                config->bin_size = result["bin_size"].as<float>();
+            }
+        }
+        config->mmap = use_mmap;
 
         return result;
 
