@@ -36,6 +36,9 @@ class MappedFragmentIndex
             cleanup();
         }
 
+        /*
+            Static cast mapping so that it is readable
+        */
         const char* data() const noexcept 
         { 
             return static_cast<const char*>(mapping_); 

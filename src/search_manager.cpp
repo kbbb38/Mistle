@@ -158,6 +158,7 @@ bool search_manager::perform_searches() {
             frag_idx->load_index_from_binary_file(config->sub_idx_file_names[i]);
             frag_idx->prepare_axv_access();
         }
+        // Else prepare mmap
         else frag_idx->map_file(config->sub_idx_file_names[i]);
         //TODO set precursor index limits by subindex borders... has to be properly implemented
         //std::cout << "Searching ... " << std::endl;
@@ -618,21 +619,25 @@ bool search_manager::search_spectrum(unsigned int search_id) {
     // Init candidate scores
     std::vector<float> dot_scores(upper_rank - lower_rank + 1, 0.f);
 
+    std::vector<int> bins_to_load = spec->binned_peaks;
+    if(config->mmap) {
+        for (int bin_idx : bins_to_load) {
+            frag_idx->load_bin_from_binary_file_mmap(bin_idx);
+        }
+    }
+
     // Update scores by matching all peaks using the fragment ion index
     for (int j = 0; j < spec->binned_peaks.size(); ++j) {
 
         // Open ion mz bin for corresponding peak
-        if(config->mmap)
-        {
-            frag_idx->load_bin_from_binary_file_mmap(spec->binned_peaks[j]);
-        }
         fragment_bin &ion_bin = frag_idx->fragment_bins[spec->binned_peaks[j]];
+
         // Determine starting point of lowest (candidate) parent index inside bin
         int starting_point_inside_bin = std::lower_bound(ion_bin.begin(), ion_bin.end(), lower_rank, [&](fragment &f, int rank) {
             return precursor_idx->get_rank(f.parent_id) < rank;
         }) - ion_bin.begin();
         int end_point = std::upper_bound(ion_bin.begin() + starting_point_inside_bin, ion_bin.end(), upper_rank, [&](int rank, fragment &f) {
-            return precursor_idx->get_rank(f.parent_id) > rank;
+            return rank < precursor_idx->get_rank(f.parent_id);
         }) - ion_bin.begin();
 
         //Update scores for all parents with fragments in the range
@@ -640,7 +645,6 @@ bool search_manager::search_spectrum(unsigned int search_id) {
             fragment &f = ion_bin[k];
             dot_scores[precursor_idx->get_rank(f.parent_id) - lower_rank] += f.intensity * spec->binned_intensities[j];
         }
-
     }
 
     /*

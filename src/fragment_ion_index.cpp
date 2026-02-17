@@ -175,9 +175,6 @@ bool fragment_ion_index::load_index_from_binary_file(const string &path) {
         }
         int mz_bin = spectrum::get_mz_bin(mz);
 
-        //if (BIN_MIN_MZ > 1)
-        //    std::cerr << "NEIJ: " << BIN_MIN_MZ << std::endl;
-
         // Same parent peaks falling into the same bin
         if (!fragment_bins[mz_bin].empty() && fragment_bins[mz_bin].back().parent_id == id) {
             fragment &frag = fragment_bins[mz_bin].back();
@@ -216,7 +213,7 @@ bool fragment_ion_index::map_file(const std::string &path)
     mapping.emplace(path);
     fragment_bins.clear();
     fragment_bins.resize(int((BIN_MAX_MZ - BIN_MIN_MZ) / settings::bin_size) + 1);
-    loaded_fragments.emplace(static_cast<size_t>((BIN_MAX_MZ - BIN_MIN_MZ) / settings::bin_size) + 1);
+    loaded_fragments.emplace(int((BIN_MAX_MZ - BIN_MIN_MZ) / settings::bin_size) + 1, false);
     return true;
 }
 
@@ -228,10 +225,10 @@ bool fragment_ion_index::load_bin_from_binary_file_mmap(unsigned int bin_index)
     /* 
      * Read single bin from binary file into the fragment index using mmap (exploratory)
      */
+
     if (loaded_fragments->at(bin_index) == true){
         return true;
-    };
-
+    }
     // fragment bin counter
     const std::vector<uint32_t>& bin_count = mapping -> bin_count();
 
@@ -239,14 +236,17 @@ bool fragment_ion_index::load_bin_from_binary_file_mmap(unsigned int bin_index)
     const unsigned int start = (bin_index == 0) ? 0 : mapping->bin_count()[bin_index - 1];
     const char* data = mapping->data();
 
+    
+    const unsigned int end = bin_count[bin_index];
+    
     for (size_t i = start; i < bin_count[bin_index]; ++i)
     {
         // exact bit starting position
         const char* base = data + i * 12;
-        unsigned int id = *reinterpret_cast<const uint32_t*>(base);
-        float mz = *reinterpret_cast<const float*>(base+4);
+        const unsigned int id = *reinterpret_cast<const uint32_t*>(base);
+        const float mz = *reinterpret_cast<const float*>(base+4);
         float intensity = *reinterpret_cast<const float*>(base+8);
-
+        
         if (settings::turn_off_fragment_intensities) intensity = 1.f;
 
         if (mz > BIN_MAX_MZ || mz < BIN_MIN_MZ) continue;
@@ -263,6 +263,7 @@ bool fragment_ion_index::load_bin_from_binary_file_mmap(unsigned int bin_index)
         
         else fragment_bins[bin_index].emplace_back(fragment(id, intensity, mz));
     }
+
     loaded_fragments->at(bin_index) = true;
     return true;
 }
@@ -271,9 +272,7 @@ bool fragment_ion_index::save_index_to_binary_file(const string &path) {
 
     ofstream f(path, ios::binary | ios::out);
 
-
     for (auto &bin : fragment_bins) {
-
         for (auto & j : bin) {
             f.write((char *) &j.parent_id, sizeof(unsigned int)); //TODO
             f.write((char *) &j.mz, sizeof(float));
@@ -296,6 +295,7 @@ bool fragment_ion_index::save_index_to_binary_file(const string &path, float bin
 
     // fragment bin counter
     std::vector<uint32_t> bin_count(int((BIN_MAX_MZ - BIN_MIN_MZ) / bin_size) + 1);
+    int current_bin_index = 0;
     for (auto &bin : fragment_bins) {
         for (auto & j : bin) {
             if (j.mz > BIN_MAX_MZ || j.mz < BIN_MIN_MZ) continue;
@@ -304,8 +304,9 @@ bool fragment_ion_index::save_index_to_binary_file(const string &path, float bin
             f.write((char *) &j.mz, sizeof(float));
             f.write((char *) &j.intensity, sizeof(float));
 
-            bin_count[int((j.mz - BIN_MIN_MZ) / bin_size)] += 1;
+            bin_count[current_bin_index] += 1;
         }
+        current_bin_index++;
     }
     // Sum so that each bin holds the number of fragments up to that bin
     partial_sum(bin_count.begin(), bin_count.end(), bin_count.begin());

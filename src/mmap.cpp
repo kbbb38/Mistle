@@ -1,5 +1,6 @@
 #include "mmap.h"
 
+// Move operators
 MappedFragmentIndex::MappedFragmentIndex(MappedFragmentIndex&& other) noexcept : fd_(other.fd_), mapping_(other.mapping_), size_(other.size_), bin_counter_(std::move(other.bin_counter_))
 {
     other.fd_ = -1;
@@ -50,7 +51,10 @@ MappedFragmentIndex::MappedFragmentIndex(const std::string& path)
         throw std::system_error(errno, std::generic_category(), "Failed to read count file: " + count_string);
     }
 
-    // Mmap magic
+    /*
+        MMap magic
+     */
+    // Open file and get file size 
     fd_ = open(path.c_str(), O_RDONLY);
     if (fd_ == -1)
     {
@@ -72,6 +76,8 @@ MappedFragmentIndex::MappedFragmentIndex(const std::string& path)
     }
 
     size_ = sb.st_size;
+
+    // Open memory mapping, private and read only
     mapping_ = mmap(NULL, size_, PROT_READ, MAP_PRIVATE, fd_, 0);
     if (mapping_ == MAP_FAILED)
     {
