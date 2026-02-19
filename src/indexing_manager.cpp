@@ -155,16 +155,9 @@ bool indexing_manager::build_indices() {
 
         fragment_ion_index frag_index;
         frag_index.load_preliminary_index_from_binary_file(file_name);
-        if (config->mmap)
-        {
-            frag_index.sort_index(precursorIndex, config->bin_size);
-            frag_index.save_index_to_binary_file(file_name, config->bin_size);
-        }
-        else
-        {
-            frag_index.sort_index(precursorIndex);
-            frag_index.save_index_to_binary_file(file_name);
-        }
+
+        frag_index.sort_index(precursorIndex);
+        frag_index.save_index_to_binary_file(file_name);
     }
     cout << "Done" << endl;
 

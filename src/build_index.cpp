@@ -46,6 +46,7 @@ cxxopts::ParseResult parseArgs(int argc, const char* argv[], std::vector<std::st
         }
         if (result.count("input")) {
             // Parse list of input directories (separated by black space)
+
             std::string dir_list = result["input"].as<std::string>();
             std::string::size_type start_pos = 0;
             for (auto end_pos = 0; (end_pos = dir_list.find(' ', end_pos)) != std::string::npos; ++end_pos)
@@ -67,10 +68,9 @@ cxxopts::ParseResult parseArgs(int argc, const char* argv[], std::vector<std::st
         }
         config->minimum_peptide_length = result["min_pep_length"].as<unsigned int>();
         config->label = result["label"].as<int>();
-
+        
         bool use_mmap = result["mmap"].as<bool>();
         bool bin_size_provided = result.count("bin_size") > 0;
-
         if (use_mmap)
         {
             if (!bin_size_provided)
@@ -79,6 +79,8 @@ cxxopts::ParseResult parseArgs(int argc, const char* argv[], std::vector<std::st
                 std::cerr << options.help() << std::endl;
                 exit(1);
             }
+            configuration::bin_size = result["bin_size"].as<float>();
+            config->bin_size = result["bin_size"].as<float>();
         }
         else
         {
@@ -86,13 +88,15 @@ cxxopts::ParseResult parseArgs(int argc, const char* argv[], std::vector<std::st
             {
                 std::cerr << "Warning: --bin_size (-b) was specified, but --mmap (-m) is not enabled." << std::endl;
                 std::cerr << "Warning: When memory mapping is not used the bin size can be adjusted during search." << std::endl;
+                configuration::bin_size = result["bin_size"].as<float>();
                 config->bin_size = result["bin_size"].as<float>();
             }
         }
         config->mmap = use_mmap;
+        configuration::mmap = use_mmap;
+
 
         return result;
-
     }
     catch (const cxxopts::OptionException& e) {
         std::cout << "Error parsing options: " << e.what() << std::endl;

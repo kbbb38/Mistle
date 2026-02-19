@@ -18,13 +18,13 @@ search_manager::search_manager(std::string search_file_path, std::string index_d
     std::cout << "Configuring ... " << std::endl;
     config = std::make_shared<configuration>();
     config->load_configuration_from_file(index_directory_path + "config.txt");
+    if (configuration::mmap) settings::bin_size = configuration::bin_size;
     pool = std::make_shared<thread_pool>(settings::num_threads);
 
     //Setting up scoring parameters
     sigma = settings::bin_size; // Alternative: / 2.f;
     max_normal = normal_pdf(0,0, sigma);
 }
-
 
 bool search_manager::prepare_search_library() {
 
@@ -69,7 +69,6 @@ bool search_manager::prepare_search_library() {
             mapped_search_ids.back().push_back(i);
             ++search_library.spectrum_list[i]->search_counter;
         }
-
     }
 
     return true;

@@ -5,6 +5,8 @@
 #include <iostream>
 #include <fstream>
 
+float configuration::bin_size = 1.0f;
+bool configuration::mmap = false;
 
 unsigned int configuration::assign_to_index(float mz) {
     for (int i = 0; i < (num_indices - 1); ++i) {
@@ -78,14 +80,20 @@ bool configuration::load_configuration_from_file(const std::string& config_file_
 
     //Fourth line (mmap)
     getline(f, line);
-    if(line.rfind("Mmap: ", 0) == 0) mmap = std::stoi(line.substr(6, std::string::npos));
+    if(line.rfind("Mmap: ", 0) == 0) {
+        mmap = std::stoi(line.substr(6, std::string::npos));
+        configuration::mmap = std::stoi(line.substr(6, std::string::npos));
+    }
     else std::cerr << "Wrong config format" << std::endl;
 
     //Fifth line (bin_size if mmap is true)
     if (mmap == true)
     {
         getline(f, line);
-        if(line.rfind("Bin size: ", 0) == 0) bin_size = std::stoi(line.substr(10, std::string::npos));
+        if(line.rfind("Bin size: ", 0) == 0) {
+            bin_size = std::stof(line.substr(10, std::string::npos));
+            configuration::bin_size = std::stof(line.substr(10, std::string::npos));
+        }
         else std::cerr << "Wrong config format" << std::endl;
     }
 
@@ -96,8 +104,6 @@ bool configuration::load_configuration_from_file(const std::string& config_file_
     for (int i = 0; i < num_indices; ++i) {
         sub_idx_file_names.push_back(idx_path + "frag_idx_" + std::to_string(i) + ".bin");
     }
-
-
 
     return true;
 }

@@ -50,10 +50,6 @@ public:
     bool set_up_output_streams();
     bool parse_file(unsigned int file_num);
     bool parse_file_buffered(unsigned int file_num);
-
-
-
-
 };
 
 

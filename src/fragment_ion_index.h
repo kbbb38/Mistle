@@ -53,8 +53,7 @@ public:
     explicit fragment_ion_index(precursor_index *parent_index);
     explicit fragment_ion_index(std::string path);
 
-    bool sort_index(std::unique_ptr<precursor_index>& parent_index);
-    bool sort_index(std::unique_ptr<precursor_index>& parent_index, float bin_size);
+    bool sort_index(std::unique_ptr<precursor_index>& parent_index);;
 
     bool prepare_axv_access();
     bool load_index_from_file(const std::string& path);
@@ -64,7 +63,6 @@ public:
     bool load_preliminary_index_from_binary_file(const std::string& path);
     bool save_index_to_file(const std::string& path);
     bool save_index_to_binary_file(const std::string& path);
-    bool save_index_to_binary_file(const std::string& path, float bin_size);
 };
 
 

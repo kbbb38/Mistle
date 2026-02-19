@@ -9,6 +9,7 @@
 #include "fragment_ion_index.h"
 #include "DefineConstants.h"
 #include "settings.h"
+#include "configuration.h"
 
 #include <sys/mman.h>
 #include <stdio.h>
@@ -16,6 +17,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <cstring>
 
 using namespace std;
 
@@ -45,10 +47,6 @@ fragment_ion_index::fragment_ion_index(precursor_index *parent_index) {
     */
 }
 
-
-
-
-
 fragment_ion_index::fragment_ion_index(string path) : file_path(path) {
 
     //load_index_from_file(file_path);
@@ -62,31 +60,23 @@ bool fragment_ion_index::sort_index(std::unique_ptr<precursor_index>& parent_ind
     /*
      * Sort all bins according to parent rankings
      */
-
-    for (fragment_bin &bin : fragment_bins) {
-        sort(bin.begin(), bin.end(), [&](fragment a,  fragment b){
-            return parent_index->get_rank(a.parent_id) < parent_index->get_rank(b.parent_id);
-        });
+    if(!configuration::mmap) {
+        for (fragment_bin &bin : fragment_bins) {
+            sort(bin.begin(), bin.end(), [&](fragment a,  fragment b){
+                return parent_index->get_rank(a.parent_id) < parent_index->get_rank(b.parent_id);
+            });
+        }
+    }
+    else {
+        for (fragment_bin &bin : fragment_bins) {
+            std::sort(bin.begin(), bin.end(), [&](fragment a, fragment b) {
+                int bin_a = int((a.mz - BIN_MIN_MZ) / configuration::bin_size);
+                int bin_b = int((b.mz - BIN_MIN_MZ) / configuration::bin_size);
+                return bin_a == bin_b ? parent_index->get_rank(a.parent_id) < parent_index->get_rank(b.parent_id) : bin_a < bin_b;
+            });
+        }
     }
 
-    return true;
-}
-
-bool fragment_ion_index::sort_index(std::unique_ptr<precursor_index>& parent_index, float bin_size) {
-
-    /*
-     * Sort all bins according to bin and parent ranking
-     */
-
-    for (fragment_bin &bin : fragment_bins) 
-    {
-	    std::sort(bin.begin(), bin.end(), [&](fragment a, fragment b)
-	    {
-		    int bin_a = int((a.mz - BIN_MIN_MZ) / bin_size);
-		    int bin_b = int((b.mz - BIN_MIN_MZ) / bin_size);
-		    return bin_a == bin_b ? parent_index->get_rank(a.parent_id) < parent_index->get_rank(b.parent_id) : bin_a < bin_b;
-	    });
-    }
     return true;
 }
 
@@ -153,16 +143,11 @@ bool fragment_ion_index::load_index_from_binary_file(const string &path) {
     fragment_bins.clear();
     fragment_bins.resize(int((BIN_MAX_MZ - BIN_MIN_MZ) / settings::bin_size) + 1);
 
-    while (!f.eof()) { //TODO might not actually end the loop correctly
-        unsigned int id;
-        float mz;
-        float intensity;
+    unsigned int id;
+    float mz;
+    float intensity;
 
-        f.read((char *) &id, sizeof(unsigned int));
-        if (f.eof()) { //Double check
-
-            break;
-        }
+    while (f.read((char *) &id, sizeof(unsigned int))) {
         f.read((char *) &mz, sizeof(float));
         f.read((char *) &intensity, sizeof(float));
 
@@ -234,18 +219,20 @@ bool fragment_ion_index::load_bin_from_binary_file_mmap(unsigned int bin_index)
 
     // starting position is 0 in the first bin, otherwise look into bin counter for number of fragments up to current bin
     const unsigned int start = (bin_index == 0) ? 0 : mapping->bin_count()[bin_index - 1];
-    const char* data = mapping->data();
 
-    
     const unsigned int end = bin_count[bin_index];
+    const char* data = mapping->data();
     
     for (size_t i = start; i < bin_count[bin_index]; ++i)
     {
         // exact bit starting position
         const char* base = data + i * 12;
-        const unsigned int id = *reinterpret_cast<const uint32_t*>(base);
-        const float mz = *reinterpret_cast<const float*>(base+4);
-        float intensity = *reinterpret_cast<const float*>(base+8);
+
+        uint32_t id;
+        float mz, intensity;
+        std::memcpy(&id, base, sizeof(uint32_t));
+        std::memcpy(&mz, base + 4, sizeof(float));
+        std::memcpy(&intensity, base + 8, sizeof(float));
         
         if (settings::turn_off_fragment_intensities) intensity = 1.f;
 
@@ -268,52 +255,48 @@ bool fragment_ion_index::load_bin_from_binary_file_mmap(unsigned int bin_index)
     return true;
 }
 
-bool fragment_ion_index::save_index_to_binary_file(const string &path) {
-
-    ofstream f(path, ios::binary | ios::out);
-
-    for (auto &bin : fragment_bins) {
-        for (auto & j : bin) {
-            f.write((char *) &j.parent_id, sizeof(unsigned int)); //TODO
-            f.write((char *) &j.mz, sizeof(float));
-            f.write((char *) &j.intensity, sizeof(float));
+bool fragment_ion_index::save_index_to_binary_file(const string &path) { 
+    if(!configuration::mmap) {
+        ofstream f(path, ios::binary | ios::out);
+    
+        for (auto &bin : fragment_bins) {
+            for (auto & j : bin) {
+                f.write((char *) &j.parent_id, sizeof(unsigned int));
+                f.write((char *) &j.mz, sizeof(float));
+                f.write((char *) &j.intensity, sizeof(float));
+            }
         }
+    
+        f.close();
     }
-
-    f.close();
-    return true;
-}
-
-/*
+    /*
     Saves index and builds and saves fragment bin counter to binary files
-*/
-bool fragment_ion_index::save_index_to_binary_file(const string &path, float bin_size) {
+    */
+    else {
+        ofstream f(path, ios::binary | ios::out);
+        std::string count_string = path.substr(0, path.size()-4) + "_count.bin";
+        ofstream fc(count_string, std::ios::binary);
 
-    ofstream f(path, ios::binary | ios::out);
-    std::string count_string = path.substr(0, path.size()-4) + "_count.bin";
-    ofstream fc(count_string, std::ios::binary);
+        // fragment bin counter
+        std::vector<uint32_t> bin_count(int((BIN_MAX_MZ - BIN_MIN_MZ) / configuration::bin_size) + 1);
+        for (auto &bin : fragment_bins) {
+            for (auto & j : bin) {
+                if (j.mz > BIN_MAX_MZ || j.mz < BIN_MIN_MZ) continue;
 
-    // fragment bin counter
-    std::vector<uint32_t> bin_count(int((BIN_MAX_MZ - BIN_MIN_MZ) / bin_size) + 1);
-    int current_bin_index = 0;
-    for (auto &bin : fragment_bins) {
-        for (auto & j : bin) {
-            if (j.mz > BIN_MAX_MZ || j.mz < BIN_MIN_MZ) continue;
+                f.write((char *) &j.parent_id, sizeof(unsigned int)); 
+                f.write((char *) &j.mz, sizeof(float));
+                f.write((char *) &j.intensity, sizeof(float));
 
-            f.write((char *) &j.parent_id, sizeof(unsigned int)); 
-            f.write((char *) &j.mz, sizeof(float));
-            f.write((char *) &j.intensity, sizeof(float));
-
-            bin_count[current_bin_index] += 1;
+                bin_count[int((j.mz - BIN_MIN_MZ) / configuration::bin_size)] += 1;
+            }
         }
-        current_bin_index++;
-    }
-    // Sum so that each bin holds the number of fragments up to that bin
-    partial_sum(bin_count.begin(), bin_count.end(), bin_count.begin());
-    fc.write(reinterpret_cast<const char*>(bin_count.data()), bin_count.size() * sizeof(uint32_t));
+        // Sum so that each bin holds the number of fragments up to that bin
+        partial_sum(bin_count.begin(), bin_count.end(), bin_count.begin());
+        fc.write(reinterpret_cast<const char*>(bin_count.data()), bin_count.size() * sizeof(uint32_t));
 
-    f.close();
-    fc.close();
+        f.close();
+        fc.close();
+    }
     return true;
 }
 

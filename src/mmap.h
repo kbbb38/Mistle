@@ -17,6 +17,7 @@ class MappedFragmentIndex
 {
     int fd_ = -1;
     void* mapping_ = MAP_FAILED;
+    const char* data_;
     size_t size_ = 0;
     std::vector<uint32_t> bin_counter_;
 
@@ -36,16 +37,9 @@ class MappedFragmentIndex
             cleanup();
         }
 
-        /*
-            Static cast mapping so that it is readable
-        */
-        const char* data() const noexcept 
-        { 
-            return static_cast<const char*>(mapping_); 
-        }
-
         size_t size() const noexcept { return size_; }
         bool empty() const noexcept { return size_ == 0; }
+        const char* data() const noexcept { return data_; }
         const std::vector<uint32_t>& bin_count() const noexcept { return bin_counter_; }
 
         private:

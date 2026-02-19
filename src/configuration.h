@@ -26,8 +26,8 @@ public:
     std::vector<std::string> sub_idx_file_names;
     unsigned int minimum_peptide_length;
     std::string build_command;
-    bool mmap;
-    float bin_size;
+    static bool mmap;
+    static float bin_size;
 
     //TODO parse more info and move to file_writer/reader
     bool save_configuration_to_file(const std::string& config_file_path);
