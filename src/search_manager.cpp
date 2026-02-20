@@ -993,7 +993,7 @@ bool search_manager::rescore_match(match &psm) {
             if (bin < 0 || bin >= spec->num_bins) {
                 continue;
             }
-            frag_idx->load_bin_from_binary_file_mmap(bin);
+            if(configuration::mmap) frag_idx->load_bin_from_binary_file_mmap(bin);
             fragment_bin &ion_bin = frag_idx->fragment_bins[bin];
 
 
