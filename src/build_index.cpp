@@ -80,7 +80,6 @@ cxxopts::ParseResult parseArgs(int argc, const char* argv[], std::vector<std::st
                 exit(1);
             }
             configuration::bin_size = result["bin_size"].as<float>();
-            config->bin_size = result["bin_size"].as<float>();
         }
         else
         {
@@ -89,10 +88,8 @@ cxxopts::ParseResult parseArgs(int argc, const char* argv[], std::vector<std::st
                 std::cerr << "Warning: --bin_size (-b) was specified, but --mmap (-m) is not enabled." << std::endl;
                 std::cerr << "Warning: When memory mapping is not used the bin size can be adjusted during search." << std::endl;
                 configuration::bin_size = result["bin_size"].as<float>();
-                config->bin_size = result["bin_size"].as<float>();
             }
         }
-        config->mmap = use_mmap;
         configuration::mmap = use_mmap;
 
 

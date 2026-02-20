@@ -151,7 +151,7 @@ bool search_manager::perform_searches() {
             continue;
         }
         // Only load whole fragment index when mmap is not activated
-        if(!config->mmap)
+        if(configuration::mmap)
         { 
             frag_idx->load_index_from_binary_file(config->sub_idx_file_names[i]);
             frag_idx->prepare_axv_access();
@@ -194,7 +194,7 @@ bool search_manager::perform_searches_parallel() {
         if (mapped_search_ids[i].empty()) {
             continue;
         }
-        if(!config->mmap)
+        if(!configuration::mmap)
         { 
             frag_idx->load_index_from_binary_file(config->sub_idx_file_names[i]);
             frag_idx->prepare_axv_access();
@@ -618,7 +618,7 @@ bool search_manager::search_spectrum(unsigned int search_id) {
     std::vector<float> dot_scores(upper_rank - lower_rank + 1, 0.f);
 
     std::vector<int> bins_to_load = spec->binned_peaks;
-    if(config->mmap) {
+    if(configuration::mmap) {
         for (int bin_idx : bins_to_load) {
             frag_idx->load_bin_from_binary_file_mmap(bin_idx);
         }

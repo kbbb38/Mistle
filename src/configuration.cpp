@@ -81,7 +81,6 @@ bool configuration::load_configuration_from_file(const std::string& config_file_
     //Fourth line (mmap)
     getline(f, line);
     if(line.rfind("Mmap: ", 0) == 0) {
-        mmap = std::stoi(line.substr(6, std::string::npos));
         configuration::mmap = std::stoi(line.substr(6, std::string::npos));
     }
     else std::cerr << "Wrong config format" << std::endl;
@@ -91,7 +90,6 @@ bool configuration::load_configuration_from_file(const std::string& config_file_
     {
         getline(f, line);
         if(line.rfind("Bin size: ", 0) == 0) {
-            bin_size = std::stof(line.substr(10, std::string::npos));
             configuration::bin_size = std::stof(line.substr(10, std::string::npos));
         }
         else std::cerr << "Wrong config format" << std::endl;
