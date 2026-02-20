@@ -21,6 +21,8 @@
 
 using namespace std;
 
+fragment_ion_index::fragment_ion_index() {}
+
 fragment_ion_index::fragment_ion_index(string path) : file_path(path) {
 
     //load_index_from_file(file_path);

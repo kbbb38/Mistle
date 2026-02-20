@@ -50,7 +50,6 @@ public:
     std::optional<std::vector<bool>> loaded_fragments;
 
     fragment_ion_index();
-    explicit fragment_ion_index(precursor_index *parent_index);
     explicit fragment_ion_index(std::string path);
 
     bool sort_index(std::unique_ptr<precursor_index>& parent_index);;

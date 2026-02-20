@@ -86,19 +86,6 @@ bool library::load_spectra_from_file(string path) {
     return true;
 }
 
-
-
-
-bool library::build_library_index() {
-    cout << "Building precursor index" << endl;
-    precursor_idx = new precursor_index();
-    //TODO refactoring get up to date
-    cout << "Building fragment ion index" << endl;
-    fragment_ion_idx = new class fragment_ion_index(precursor_idx);
-    is_indexed = true;
-    return false;
-}
-
 library::library(vector<std::shared_ptr<spectrum>> &spectra) {
     spectrum_list = spectra;
 }

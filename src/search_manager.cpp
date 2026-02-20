@@ -910,11 +910,16 @@ bool search_manager::rescore_match(match &psm) {
         int lower_bin = spectrum::get_mz_bin(mz - 5 * sigma);
         int upper_bin = spectrum::get_mz_bin(mz + 5 * sigma);
 
+        if (configuration::mmap) {
+            for (int bin = lower_bin; bin <= upper_bin; ++bin) {
+                frag_idx->load_bin_from_binary_file_mmap(bin);
+            }
+        }
+
         for (int bin = lower_bin; bin <= upper_bin; ++bin) {
             if (bin < 0 || bin >= spec->num_bins) {
                 continue;
             }
-            if(configuration::mmap) frag_idx->load_bin_from_binary_file_mmap(bin);
             fragment_bin &ion_bin = frag_idx->fragment_bins[bin];
 
 
@@ -1163,4 +1168,3 @@ bool search_manager::is_peptide_isomer(std::string &peptide, std::string &other)
 
     return true;
 }
-
