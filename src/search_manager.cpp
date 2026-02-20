@@ -890,75 +890,6 @@ bool search_manager::save_search_results_in_pin_format(const std::string &file_p
     return true;
 }
 
-//__m256 _mini_vector = {ion_bin[k].intensity, ion_bin[k+1].intensity, ion_bin[k+2].intensity, ion_bin[k+3].intensity, ion_bin[k+4].intensity, ion_bin[k+5].intensity, ion_bin[k+6].intensity, ion_bin[k+7].intensity}; //_mm256_set_ps(ion_bin[k].intensity, ion_bin[k+1].intensity, ion_bin[k+2].intensity, ion_bin[k+3].intensity, ion_bin[k+4].intensity, ion_bin[k+5].intensity, ion_bin[k+6].intensity, ion_bin[k+7].intensity);//_mm256_load_ps(&vec[i]);
-
-
-float search_manager::rescore_spectrum(unsigned int search_id, unsigned int target_id) {
-    std::shared_ptr<spectrum> spec = search_library.spectrum_list[search_id];
-
-    float score = 0.f;
-
-    for (int i = 0; i < spec->peak_positions.size(); ++i) {
-        float mz = spec->peak_positions[i];
-        float intensity = spec->intensities[i];
-
-        /*
-         * Extract all matching peaks within a range of +-5 sigma
-         */
-
-        std::vector<std::pair<float, float>> peaks;
-        int lower_bin = spectrum::get_mz_bin(mz - 5 * sigma);
-        int upper_bin = spectrum::get_mz_bin(mz + 5 * sigma);
-
-        for (int bin = lower_bin; bin <= upper_bin; ++bin) {
-            if (bin < 0 || bin >= spec->num_bins) {
-                continue;
-            }
-            fragment_bin &ion_bin = frag_idx->fragment_bins[bin];
-            if (ion_bin.empty())
-                continue;
-
-            fragment &f = *std::lower_bound(ion_bin.begin(), ion_bin.end(), precursor_idx->get_rank(target_id), [&](fragment &f, int rank) {
-                return precursor_idx->get_rank(f.parent_id) < rank;
-            });
-
-            if (f.parent_id != target_id) {
-                continue;
-            }
-
-
-            if (!f.peak_composition.empty()) {
-                for (std::pair<float, float> p : f.peak_composition) {
-                    peaks.push_back(p);
-                }
-            } else {
-                peaks.emplace_back(f.mz, f.intensity);
-            }
-
-        }
-
-        /*
-         * Score spectrum peak to all peaks of target using normal distribution for intensity fall-off
-         */
-
-        for (auto &peak : peaks) {
-            float distance = mz - peak.first;
-            float normal_factor = normal_pdf(distance, 0, sigma) / max_normal;
-
-            score += intensity * peak.second * normal_factor;
-        }
-    }
-
-    return score;
-
-
-
-
-
-
-}
-
-
 bool search_manager::rescore_match_old(match &psm) {
     std::shared_ptr<spectrum> spec = search_library.spectrum_list[psm.query_id];
 
@@ -1062,6 +993,7 @@ bool search_manager::rescore_match(match &psm) {
             if (bin < 0 || bin >= spec->num_bins) {
                 continue;
             }
+            frag_idx->load_bin_from_binary_file_mmap(bin);
             fragment_bin &ion_bin = frag_idx->fragment_bins[bin];
 
 
