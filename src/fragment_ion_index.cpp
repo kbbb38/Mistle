@@ -133,7 +133,6 @@ bool fragment_ion_index::load_bin_from_binary_file_mmap(unsigned int bin_index)
     /* 
      * Read single bin from binary file into the fragment index using mmap (exploratory)
      */
-
     if (loaded_fragments->at(bin_index) == true){
         return true;
     }
@@ -145,7 +144,7 @@ bool fragment_ion_index::load_bin_from_binary_file_mmap(unsigned int bin_index)
 
     const unsigned int end = bin_count[bin_index];
     const char* data = mapping->data();
-    
+
     for (size_t i = start; i < bin_count[bin_index]; ++i)
     {
         // exact bit starting position

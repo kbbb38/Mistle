@@ -85,9 +85,6 @@ MappedFragmentIndex::MappedFragmentIndex(const std::string& path)
         throw std::system_error(errno, std::generic_category(), "mmap failed for file: " + path);
     }
     close(fd_); 
-
-    madvise(mapping_, size_, MADV_RANDOM);
-    posix_fadvise(fd_, 0, 0, POSIX_FADV_RANDOM);
-
+    
     data_ = static_cast<const char*>(mapping_); 
 }

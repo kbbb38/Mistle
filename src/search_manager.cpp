@@ -151,7 +151,7 @@ bool search_manager::perform_searches() {
             continue;
         }
         // Only load whole fragment index when mmap is not activated
-        if(configuration::mmap)
+        if(!configuration::mmap)
         { 
             frag_idx->load_index_from_binary_file(config->sub_idx_file_names[i]);
             frag_idx->prepare_axv_access();
@@ -912,6 +912,9 @@ bool search_manager::rescore_match(match &psm) {
 
         if (configuration::mmap) {
             for (int bin = lower_bin; bin <= upper_bin; ++bin) {
+                if (bin < 0 || bin >= spec->num_bins) {
+                    continue;
+                }
                 frag_idx->load_bin_from_binary_file_mmap(bin);
             }
         }
