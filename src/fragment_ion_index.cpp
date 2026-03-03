@@ -6,10 +6,12 @@
 #include <cmath>
 #include <chrono>
 #include <numeric>
+#include <algorithm>
 #include "fragment_ion_index.h"
 #include "DefineConstants.h"
 #include "settings.h"
 #include "configuration.h"
+#include "mmap.h"
 
 #include <sys/mman.h>
 #include <stdio.h>

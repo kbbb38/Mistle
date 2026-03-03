@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cmath>
 #include <numeric>
+#include <algorithm>
 #include "spectrum.h"
 #include "DefineConstants.h"
 #include "settings.h"

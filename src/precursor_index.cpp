@@ -1,6 +1,7 @@
 #include <iostream>
 #include <utility>
 #include <memory>
+#include <algorithm>
 #include <fstream>
 #include "precursor_index.h"
 #include "index_file_writer.h"
